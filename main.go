@@ -2,9 +2,11 @@ package main
 
 import (
 	"acme/authorization"
+	"acme/certificate"
 	"acme/challenge"
 	"acme/directory"
 	"acme/register"
+	"ca"
 	"fmt"
 	"html"
 	"io/ioutil"
@@ -240,8 +242,10 @@ func main() {
 	server := model.AcmeServer{
 		Hostname: "kco12.nantes.keyconsulting.fr",
 		Port:     "81",
+		CA:       new(ca.StupidCA),
 		Clients:  make(map[string]*model.RegisterClient),
 	}
+	server.CA.Init()
 
 	http.HandleFunc("/directory", func(w http.ResponseWriter, r *http.Request) {
 		directory.HandleDirectory(&server, w, r)
@@ -252,8 +256,20 @@ func main() {
 	http.HandleFunc("/new-authz", func(w http.ResponseWriter, r *http.Request) {
 		authorization.HandleNewAuthorization(&server, w, r)
 	})
-	http.HandleFunc("/authz/asdf/0", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/authz/asdf/", func(w http.ResponseWriter, r *http.Request) {
 		challenge.HandleInfo(&server, w, r)
+	})
+	http.HandleFunc("/cert/new-cert", func(w http.ResponseWriter, r *http.Request) {
+		certificate.HandleNewCert(&server, w, r)
+	})
+	http.HandleFunc("/cert/crt/", func(w http.ResponseWriter, r *http.Request) {
+		certificate.HandleUniqueCertUri(&server, w, r)
+	})
+	http.HandleFunc("/cert/", func(w http.ResponseWriter, r *http.Request) {
+		certificate.HandleGetCert(&server, w, r)
+	})
+	http.HandleFunc("/cert/ca", func(w http.ResponseWriter, r *http.Request) {
+		certificate.HandleCACertificate(&server, w, r)
 	})
 	/*
 		http.HandleFunc("/authz/asdf", handleRequestStatus)

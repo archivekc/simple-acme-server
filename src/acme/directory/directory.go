@@ -22,7 +22,7 @@ func HandleDirectory(server *model.AcmeServer, w http.ResponseWriter, r *http.Re
 		NewReg:     "https://" + server.Hostname + ":" + server.Port + "/new-reg",
 		RecoverReg: "https://" + server.Hostname + ":" + server.Port + "/recover-reg",
 		NewAuthz:   "https://" + server.Hostname + ":" + server.Port + "/new-authz",
-		NewCert:    "https://" + server.Hostname + ":" + server.Port + "/new-cert",
+		NewCert:    "https://" + server.Hostname + ":" + server.Port + "/cert/new-cert",
 		RevokeCert: "https://" + server.Hostname + ":" + server.Port + "/revoke-cert",
 	}
 	client := server.Clients[acme.GetIP(r)]
@@ -30,6 +30,7 @@ func HandleDirectory(server *model.AcmeServer, w http.ResponseWriter, r *http.Re
 		client = new(model.RegisterClient)
 		server.Clients[acme.GetIP(r)] = client
 		client.Authorizations = []*model.Authorization{}
+		client.CertificateRequests = make(map[string]*model.CertificateRequest)
 	}
 	acme.DefaultHeaderWithNonce(client, w)
 	json.NewEncoder(w).Encode(dirRes)

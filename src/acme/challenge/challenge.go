@@ -24,15 +24,32 @@ type infoOutput struct {
 	KeyAuthorization string `json:"keyAuthorization"`
 }
 
+func getAuthAndChallengeFromToken(auths []*model.Authorization, token string) (*model.Authorization, *model.Challenge) {
+	var auth *model.Authorization
+	var challenge *model.Challenge
+
+	for _, a := range auths {
+		for _, c := range a.Challenges {
+			if c.Token == token {
+				auth = a
+				challenge = c
+			}
+		}
+	}
+
+	return auth, challenge
+}
+
 // HandleInfo handle call for complementary data
 func HandleInfo(server *model.AcmeServer, w http.ResponseWriter, r *http.Request) {
 	content := acme.DebugRequest(r)
 
 	// Check JWS
 	client := server.Clients[acme.GetIP(r)]
-
+	token := acme.GetLastPart(r)
+	fmt.Println("Challenge token is", token)
+	authorization, challenge := getAuthAndChallengeFromToken(client.Authorizations, token)
 	if r.Method == "GET" {
-		challenge := client.Authorizations[0].Challenges[0]
 		response := infoOutput{
 			Type:             "http-01",
 			Token:            challenge.Token,
@@ -55,8 +72,6 @@ func HandleInfo(server *model.AcmeServer, w http.ResponseWriter, r *http.Request
 		if input.Type != "http-01" {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
-			authorization := client.Authorizations[0]
-			challenge := authorization.Challenges[0]
 			challenge.KeyAuthorization = input.KeyAuthorization
 			response := infoOutput{
 				Type:             "http-01",

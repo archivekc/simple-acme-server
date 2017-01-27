@@ -45,11 +45,12 @@ func HandleNewAuthorization(server *model.AcmeServer, w http.ResponseWriter, r *
 	if input.Identifier.Type != "dns" {
 		w.WriteHeader(http.StatusForbidden)
 	} else {
+		token := acme.CreateNonce(32)
 		c := new(model.Challenge)
 		c.Status = "pending"
 		c.Type = "http-01"
-		c.URI = "https://" + server.Hostname + ":" + server.Port + "/authz/asdf/0"
-		c.Token = acme.CreateNonce(32)
+		c.URI = "https://" + server.Hostname + ":" + server.Port + "/authz/asdf/" + token
+		c.Token = token
 
 		authorization := new(model.Authorization)
 
@@ -74,7 +75,7 @@ func HandleNewAuthorization(server *model.AcmeServer, w http.ResponseWriter, r *
 
 		acme.DefaultHeaderWithNonce(client, w)
 		w.Header().Set("Location", "https://"+server.Hostname+":"+server.Port+"/authz/asdf")
-		w.Header().Set("Link", "https://"+server.Hostname+":"+server.Port+"/new-cert>;rel=\"next\"")
+		w.Header().Set("Link", "<https://"+server.Hostname+":"+server.Port+"/cert/new-cert>;rel=\"next\"")
 		w.WriteHeader(http.StatusCreated)
 		fmt.Println(response)
 		json.NewEncoder(w).Encode(response)

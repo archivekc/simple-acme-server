@@ -35,9 +35,10 @@ func HandleNewRegistration(server *model.AcmeServer, w http.ResponseWriter, r *h
 	}
 	client.Contact = input.Contact
 	client.Key = protected.JWK
+	client.URI = "https://" + server.Hostname + ":" + server.Port + "/reg/asdf"
 
-	w.Header().Set("Location", "https://"+server.Hostname+":"+server.Port+"/reg/asdf") // FIXME create real client registered url
-	w.Header().Set("Link", "https://"+server.Hostname+":"+server.Port+"/new-authz>;rel=\"next\"")
+	w.Header().Set("Location", client.URI) // FIXME create real client registered url
+	w.Header().Set("Link", "<https://"+server.Hostname+":"+server.Port+"/new-authz>;rel=\"next\"")
 	// FIXME does not support Terms Of Service agreement
 	w.WriteHeader(http.StatusCreated)
 	output := newRegOutput{

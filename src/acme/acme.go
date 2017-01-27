@@ -44,6 +44,12 @@ func GetIP(r *http.Request) string {
 	return s[0]
 }
 
+// GetLastPart Use to get last part of the uri
+func GetLastPart(r *http.Request) string {
+	s := strings.Split(r.URL.Path, "/")
+	return s[len(s)-1]
+}
+
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 // CreateNonce use it for creating Replay Nonce
