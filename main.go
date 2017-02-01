@@ -7,13 +7,22 @@ import (
 	"acme/directory"
 	"acme/register"
 	"ca"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"html"
 	"io/ioutil"
 	"log"
 	"model"
+	"net"
 	"net/http"
+	"os"
 	"time"
+
+	"encoding/base64"
 
 	jose "gopkg.in/square/go-jose.v2"
 )
@@ -238,14 +247,49 @@ func defaultHandle(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Body:", string(content))
 }
 
+func initServer(domainName string, certAuthority *ca.PersistentSimpleCA) {
+	if _, err := os.Stat("server.key"); os.IsNotExist(err) {
+		priv, err := rsa.GenerateKey(rand.Reader, 2048)
+		if err != nil {
+			panic(err)
+		}
+		b := x509.MarshalPKCS1PrivateKey(priv)
+		ioutil.WriteFile("server.key", pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: b}), 0700)
+		tpl := x509.CertificateRequest{
+			Subject: pkix.Name{
+				CommonName: domainName,
+			},
+			Version:   1,
+			PublicKey: &priv.PublicKey,
+			DNSNames: []string{
+				domainName,
+			},
+			EmailAddresses: []string{},
+			IPAddresses:    []net.IP{},
+		}
+		csr, err := x509.CreateCertificateRequest(rand.Reader, &tpl, priv)
+		if err != nil {
+			panic(err)
+		}
+		ioutil.WriteFile("server.csr", pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr}), 0755)
+		cert := certAuthority.CreateCert(base64.RawURLEncoding.EncodeToString(csr))
+		ioutil.WriteFile("server.crt", pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert}), 0755)
+	}
+
+}
+
 func main() {
+	serverName := "localhost"
+	port := "81"
+
 	server := model.AcmeServer{
-		Hostname: "localhost",
-		Port:     "81",
+		Hostname: serverName,
+		Port:     port,
 		CA:       new(ca.PersistentSimpleCA),
 		Clients:  make(map[string]*model.RegisterClient),
 	}
 	server.CA.LoadCA("ca_key.pem", "ca_crt.pem")
+	initServer(serverName, server.CA)
 
 	http.HandleFunc("/directory", func(w http.ResponseWriter, r *http.Request) {
 		directory.HandleDirectory(&server, w, r)
@@ -279,6 +323,6 @@ func main() {
 	*/
 	http.HandleFunc("/", defaultHandle)
 
-	log.Fatal(http.ListenAndServeTLS(":81", "server.crt", "server.key", nil))
+	log.Fatal(http.ListenAndServeTLS(":"+server.Port, "server.crt", "server.key", nil))
 
 }

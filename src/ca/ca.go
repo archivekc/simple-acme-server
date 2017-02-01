@@ -86,6 +86,15 @@ func (ca *PersistentSimpleCA) LoadCA(privateKeyPath, certKeyPath string) {
 			}
 			ioutil.WriteFile(certKeyPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Certificate}), 0755)
 		} else {
+			ppemEncoded, err := ioutil.ReadFile(privateKeyPath)
+			if err != nil {
+				panic(err)
+			}
+			pp, _ := pem.Decode(ppemEncoded)
+			ca.Private, err = x509.ParsePKCS1PrivateKey(pp.Bytes)
+			if err != nil {
+				panic(err)
+			}
 			pemEncoded, err := ioutil.ReadFile(certKeyPath)
 			if err != nil {
 				panic(err)
@@ -141,7 +150,6 @@ func decodeB64(data string) []byte {
 	if m := len(data) % 4; m != 0 {
 		data += strings.Repeat("=", 4-m)
 	}
-	fmt.Println(data)
 	pb, err := base64.URLEncoding.DecodeString(data)
 	if err != nil {
 		panic(err)
@@ -151,7 +159,7 @@ func decodeB64(data string) []byte {
 
 // CreateCert creates a certificate using the private and public key of the CA from the given csr
 func (ca *CA) CreateCert(csr string) []byte {
-	fmt.Println("Stupid CA CSR to certified")
+	//fmt.Println("Stupid CA CSR to certified")
 	//pem.Encode(os.Stdout, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: []byte(csr)})
 	certReq, err := x509.ParseCertificateRequest(decodeB64(csr))
 	if err != nil {

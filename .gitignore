@@ -1,6 +1,7 @@
 pkg
 run.cmd
 server.crt
+server.csr
 server.key
 test-server.sh
 ca_crt.pem
