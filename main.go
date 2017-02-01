@@ -22,7 +22,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/jasonlvhit/gocron"
+
 	"encoding/base64"
+
+	"crypto/tls"
 
 	jose "gopkg.in/square/go-jose.v2"
 )
@@ -247,7 +251,7 @@ func defaultHandle(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Body:", string(content))
 }
 
-func initServer(domainName string, certAuthority *ca.PersistentSimpleCA) {
+func initServer(domainName string, acmes *model.AcmeServer) {
 	if _, err := os.Stat("server.key"); os.IsNotExist(err) {
 		priv, err := rsa.GenerateKey(rand.Reader, 2048)
 		if err != nil {
@@ -272,10 +276,52 @@ func initServer(domainName string, certAuthority *ca.PersistentSimpleCA) {
 			panic(err)
 		}
 		ioutil.WriteFile("server.csr", pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr}), 0755)
-		cert := certAuthority.CreateCert(base64.RawURLEncoding.EncodeToString(csr))
-		ioutil.WriteFile("server.crt", pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert}), 0755)
+	}
+	renewServerCrtAndServe(acmes)
+}
+
+func renewServerCrtAndServe(acmes *model.AcmeServer) {
+	fmt.Println("Renewing server certificate")
+	csr, err := ioutil.ReadFile("server.csr")
+	if err != nil {
+		panic(err)
+	}
+	pcsr, _ := pem.Decode(csr)
+	cert := acmes.CA.CreateCert(base64.RawURLEncoding.EncodeToString(pcsr.Bytes))
+	serverCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert})
+	caCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: acmes.CA.Certificate})
+	fullChain := append(serverCert, caCert...)
+	ioutil.WriteFile("server.crt", fullChain, 0755)
+
+	// serve or reloadServer
+	go reloadServer(acmes)
+}
+
+func reloadServer(acmes *model.AcmeServer) {
+	if acmes.Listener != nil {
+		err := acmes.Listener.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
+	// Set up server
+	acmes.HTTPServer = http.Server{
+		Handler:   nil,
+		TLSConfig: new(tls.Config),
+	}
+	crt, err := tls.LoadX509KeyPair("server.crt", "server.key")
+	if err != nil {
+		panic(err)
+	}
+	acmes.HTTPServer.TLSConfig.Certificates = []tls.Certificate{crt}
+	// Set listener
+	l, err := tls.Listen("tcp", ":"+acmes.Port, acmes.HTTPServer.TLSConfig)
+	if err != nil {
+		panic(err)
+	}
+	acmes.Listener = l
+	acmes.HTTPServer.Serve(acmes.Listener)
 }
 
 func main() {
@@ -289,7 +335,6 @@ func main() {
 		Clients:  make(map[string]*model.RegisterClient),
 	}
 	server.CA.LoadCA("ca_key.pem", "ca_crt.pem")
-	initServer(serverName, server.CA)
 
 	http.HandleFunc("/directory", func(w http.ResponseWriter, r *http.Request) {
 		directory.HandleDirectory(&server, w, r)
@@ -323,6 +368,13 @@ func main() {
 	*/
 	http.HandleFunc("/", defaultHandle)
 
-	log.Fatal(http.ListenAndServeTLS(":"+server.Port, "server.crt", "server.key", nil))
+	// start http server
+	go initServer(serverName, &server)
 
+	// renew server cert
+	gocron.Every(8).Days().Do(renewServerCrtAndServe, &server)
+	<-gocron.Start()
+
+	//log.Fatal(http.Serve(listener, nil))
+	//log.Fatal(http.ListenAndServeTLS(":"+server.Port, "server.crt", "server.key", nil))
 }

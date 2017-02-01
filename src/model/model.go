@@ -2,6 +2,8 @@ package model
 
 import (
 	"ca"
+	"net"
+	"net/http"
 	"time"
 )
 
@@ -17,10 +19,12 @@ type JWK struct {
 
 //AcmeServer represents the configuration of this AcmeServer
 type AcmeServer struct {
-	Hostname string
-	Port     string
-	CA       *ca.PersistentSimpleCA
-	Clients  map[string]*RegisterClient
+	Hostname   string
+	Port       string
+	CA         *ca.PersistentSimpleCA
+	Clients    map[string]*RegisterClient
+	Listener   net.Listener
+	HTTPServer http.Server
 }
 
 // RegisterClient : a registered clients with its authorization and challenges
