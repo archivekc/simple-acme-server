@@ -242,10 +242,10 @@ func main() {
 	server := model.AcmeServer{
 		Hostname: "kco12.nantes.keyconsulting.fr",
 		Port:     "81",
-		CA:       new(ca.StupidCA),
+		CA:       new(ca.PersistentSimpleCA),
 		Clients:  make(map[string]*model.RegisterClient),
 	}
-	server.CA.Init()
+	server.CA.LoadCA("ca_key.pem", "ca_crt.pem")
 
 	http.HandleFunc("/directory", func(w http.ResponseWriter, r *http.Request) {
 		directory.HandleDirectory(&server, w, r)

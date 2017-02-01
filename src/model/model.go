@@ -19,7 +19,7 @@ type JWK struct {
 type AcmeServer struct {
 	Hostname string
 	Port     string
-	CA       *ca.StupidCA
+	CA       *ca.PersistentSimpleCA
 	Clients  map[string]*RegisterClient
 }
 
