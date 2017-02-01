@@ -240,7 +240,7 @@ func defaultHandle(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	server := model.AcmeServer{
-		Hostname: "kco12.nantes.keyconsulting.fr",
+		Hostname: "localhost",
 		Port:     "81",
 		CA:       new(ca.PersistentSimpleCA),
 		Clients:  make(map[string]*model.RegisterClient),
