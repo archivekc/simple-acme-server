@@ -2,10 +2,10 @@ This is a prototype of a simple ACME protocol server. The aims is to be able to 
 
 # Features
 * Test with lego client to generate an end user certificate
+* Self signed server https certificate so client just have to trust the ca certificate
 
 # Roadmap
 * Correctly validate JWS message 
-* Self signed server https certificate so client just have to trust the ca certificate
 * Add a landing html page with help and link to CA certificate (help user to add CA as trust in their browser)
 * Persistence of clients and generated certificate
 * Support of renewing certificate
