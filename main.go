@@ -150,6 +150,7 @@ func main() {
 		CA:       new(ca.PersistentSimpleCA),
 		Clients:  make(map[string]*model.RegisterClient),
 	}
+	server.Load()
 	server.CA.LoadCA(parameters)
 
 	http.HandleFunc("/directory", func(w http.ResponseWriter, r *http.Request) {

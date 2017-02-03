@@ -1,5 +1,11 @@
 package constants
 
+import "time"
+
+const DatabaseFileName = "clients.json"
+
+const TimeFormat = "\"" + time.UnixDate + "\""
+
 const OptionsHostname string = "hostname"
 const OptionsPort string = "port"
 const OptionsCaKeyPath string = "ca-key"

@@ -6,3 +6,4 @@ server.key
 test-server.sh
 ca_crt.pem
 ca_key.pem
+clients.json

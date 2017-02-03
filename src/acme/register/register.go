@@ -36,6 +36,7 @@ func HandleNewRegistration(server *model.AcmeServer, w http.ResponseWriter, r *h
 	client.Contact = input.Contact
 	client.Key = protected.JWK
 	client.URI = "https://" + server.Hostname + ":" + server.Port + "/reg/asdf"
+	server.Save()
 
 	w.Header().Set("Location", client.URI) // FIXME create real client registered url
 	w.Header().Set("Link", "<https://"+server.Hostname+":"+server.Port+"/new-authz>;rel=\"next\"")

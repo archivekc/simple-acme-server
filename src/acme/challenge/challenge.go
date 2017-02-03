@@ -84,12 +84,12 @@ func HandleInfo(server *model.AcmeServer, w http.ResponseWriter, r *http.Request
 			acme.DefaultHeaderWithNonce(client, w)
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(response)
-			go validHTTP01(authorization, challenge)
+			go validHTTP01(authorization, challenge, server)
 		}
 	}
 }
 
-func validHTTP01(auth *model.Authorization, challenge *model.Challenge) {
+func validHTTP01(auth *model.Authorization, challenge *model.Challenge, server *model.AcmeServer) {
 	fmt.Println("valid http-01", auth.CommonName)
 	url := "http://"
 	url += auth.CommonName
@@ -116,5 +116,8 @@ func validHTTP01(auth *model.Authorization, challenge *model.Challenge) {
 		challenge.Status = "invalid"
 		auth.Status = "invalid"
 	}
-	challenge.Validated = time.Now()
+	challenge.Validated = model.JSONTime{
+		Value: time.Now(),
+	}
+	server.Save()
 }

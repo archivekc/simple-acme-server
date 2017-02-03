@@ -20,10 +20,11 @@ This is a prototype of a simple ACME protocol server. The aims is to be able to 
 * Correctly validate JWS message 
 * Self signed server https certificate so client just have to trust the ca certificate
 * <del>Add a landing html page with help and link to CA certificate (help user to add CA as trust in their browser)</del>
-* Persistence of clients and generated certificate
+* <del>Persistence of clients and generated certificate</del>
 * Support of renewing certificate
 * Unit testing
 * Support of others challenges
+* Add a CRL url and CRL gen
 
 # Test
 Currently it is tested against lego client. 
