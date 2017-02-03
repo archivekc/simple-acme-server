@@ -6,6 +6,7 @@ import (
 	"acme/challenge"
 	"acme/directory"
 	"acme/register"
+	"acme/www"
 	"ca"
 	"crypto/rand"
 	"crypto/rsa"
@@ -173,7 +174,10 @@ func main() {
 		certificate.HandleGetCert(&server, w, r)
 	})
 	http.HandleFunc("/cert/ca", func(w http.ResponseWriter, r *http.Request) {
-		certificate.HandleCACertificate(&server, w, r)
+		certificate.HandleCACertificate(&server, parameters[constants.OptionsCaCommonName].(string), w, r)
+	})
+	http.HandleFunc("/cert/ca/pem", func(w http.ResponseWriter, r *http.Request) {
+		certificate.HandleCACertificatePem(&server, parameters[constants.OptionsCaCommonName].(string), w, r)
 	})
 	/*
 		http.HandleFunc("/authz/asdf", handleRequestStatus)
@@ -181,7 +185,9 @@ func main() {
 		http.HandleFunc("/new-cert", defaultHandle)
 		http.HandleFunc("/revoke-cert", defaultHandle)
 	*/
-	http.HandleFunc("/", defaultHandle)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		www.ServeTemplate("doc_en.html", &server, w, r)
+	})
 
 	// start http server
 	go initServer(&server)

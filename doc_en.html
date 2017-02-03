@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>How to</title>
+	</head>
+	<body style="width: 1000px">
+		<h1>How to get a certificate with this server</h1>
+		
+		<h2>Trust the acme server on your station</h2>
+		<p> you need to import the CA certificate on your station.</p>
+		
+		<h3>Linux server</h3>
+		<p>
+			sudo wget --no-check-certificate -O /usr/local/share/ca-certificates/{{.Domain}}.crt "{{.ServerURL}}/cert/ca/pem"
+			<br/>
+			sudo update-ca-certificates
+		</p>
+
+		<h3>Windows</h3>
+		<p>
+			Download the <a href="{{.ServerURL}}/cert/ca">CA certificate</a> and add it to the CA truststore as a binary certificate.
+		</p>
+
+		<h2>Request a certificate to the acme server</h2>
+
+		<h3>Using lego (https://github.com/xenolf/lego)</h3>
+		<p>With the command line utility lego you can create a new certificate for the name my.example.org simply with the following command:</p>
+		<p>lego -d my.example.org -s {{.ServerURL}}/directory -m admin@my.example.org run</p>
+		<p>Where my.example.org is your domain name and admin@my.example.org your email adress.</p>
+	</body>
+</html>

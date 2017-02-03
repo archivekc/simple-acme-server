@@ -2,9 +2,8 @@ This is a prototype of a simple ACME protocol server. The aims is to be able to 
 
 # Features
 * Test with lego client to generate an end user certificate
-* Parameters for CA configuration, CA keys (for using an specific instead of generating one), server domain name, listen port, etc ...
 
-#Parameters
+# Parameters
 * "hostname": Hostname of server
 * "port": Port of server
 * "ca-key": Path to the pem file containing CA key
@@ -17,9 +16,10 @@ This is a prototype of a simple ACME protocol server. The aims is to be able to 
 
 
 # Roadmap
+* <del>Parameters for CA configuration, CA keys (for using an specific instead of generating one), server domain name, listen port, etc ...</del>
 * Correctly validate JWS message 
 * Self signed server https certificate so client just have to trust the ca certificate
-* Add a landing html page with help and link to CA certificate (help user to add CA as trust in their browser)
+* <del>Add a landing html page with help and link to CA certificate (help user to add CA as trust in their browser)</del>
 * Persistence of clients and generated certificate
 * Support of renewing certificate
 * Unit testing
