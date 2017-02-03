@@ -32,6 +32,7 @@ func HandleDirectory(server *model.AcmeServer, w http.ResponseWriter, r *http.Re
 		client.Authorizations = []*model.Authorization{}
 		client.CertificateRequests = make(map[string]*model.CertificateRequest)
 	}
+	server.Save()
 	acme.DefaultHeaderWithNonce(client, w)
 	json.NewEncoder(w).Encode(dirRes)
 }

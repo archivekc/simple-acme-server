@@ -73,6 +73,9 @@ func createCert(certificate *model.CertificateRequest, server *model.AcmeServer)
 	certificate.OrderStatus = "valid"
 	certificate.Last = crt
 	certificate.Certificates[hash] = crt
+
+	// Saves server
+	server.Save()
 }
 
 func HandleUniqueCertUri(server *model.AcmeServer, w http.ResponseWriter, r *http.Request) {
@@ -94,7 +97,7 @@ func HandleUniqueCertUri(server *model.AcmeServer, w http.ResponseWriter, r *htt
 	}
 }
 
-func HandleCACertificate(server *model.AcmeServer, w http.ResponseWriter, r *http.Request) {
+func HandleCACertificate(server *model.AcmeServer, caName string, w http.ResponseWriter, r *http.Request) {
 	acme.DebugRequest(r)
 	if r.Header.Get("Content-Type") == "application/x-pem-file" {
 		w.Header().Set("Content-Type", "application/x-pem-file")
@@ -102,9 +105,18 @@ func HandleCACertificate(server *model.AcmeServer, w http.ResponseWriter, r *htt
 		w.Write(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.CA.Certificate}))
 	} else {
 		w.Header().Set("Content-Type", "application/pkix-cert")
+		w.Header().Set("Content-Disposition", "attachment; filename=\""+caName+".crt\"")
 		w.WriteHeader(http.StatusOK)
 		w.Write(server.CA.Certificate)
 	}
+}
+
+func HandleCACertificatePem(server *model.AcmeServer, caName string, w http.ResponseWriter, r *http.Request) {
+	acme.DebugRequest(r)
+	w.Header().Set("Content-Type", "application/x-pem-file")
+	w.Header().Set("Content-Disposition", "attachment; filename=\""+caName+".pem\"")
+	w.WriteHeader(http.StatusOK)
+	w.Write(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.CA.Certificate}))
 }
 
 func HandleGetCert(server *model.AcmeServer, w http.ResponseWriter, r *http.Request) {
@@ -132,14 +144,14 @@ func HandleGetCert(server *model.AcmeServer, w http.ResponseWriter, r *http.Requ
 			w.Header().Add("Link", "<"+client.URI+">;rel=\"author\"")
 			w.Header().Set("Location", certificate.URI)
 			w.Header().Set("Content-Location", certificate.Last.URI)
-			if r.Header.Get("Content-Type") == "application/pkix-cert" {
-				w.Header().Set("Content-Type", "application/pkix-cert")
-				w.WriteHeader(http.StatusCreated)
-				w.Write(certificate.Last.CRT)
-			} else {
+			if r.Header.Get("Content-Type") == "application/x-pem-file" {
 				w.Header().Set("Content-Type", "application/x-pem-file")
 				w.WriteHeader(http.StatusCreated)
 				w.Write(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Last.CRT}))
+			} else {
+				w.Header().Set("Content-Type", "application/pkix-cert")
+				w.WriteHeader(http.StatusCreated)
+				w.Write(certificate.Last.CRT)
 			}
 		} else {
 			// Please retry later
@@ -169,18 +181,24 @@ func HandleNewOrder(server *model.AcmeServer, w http.ResponseWriter, r *http.Req
 		certificate.URI = "https://" + server.Hostname + ":" + server.Port + "/cert/" + hash
 		client.CertificateRequests[hash] = certificate
 	}
-	certificate.NotBefore = input.Before
-	certificate.NotAfter = input.After
-	certificate.OrderExpires = time.Now().Add(timeToComplete)
+	certificate.NotBefore = model.JSONTime{
+		Value: input.Before,
+	}
+	certificate.NotAfter = model.JSONTime{
+		Value: input.After,
+	}
+	certificate.OrderExpires = model.JSONTime{
+		Value: time.Now().Add(timeToComplete),
+	}
 	// FIXME explore csr to map to all Authorizations, for now just say it is processing
 	certificate.OrderStatus = "processing"
 
 	response := newOrderOutput{
 		Status:         certificate.OrderStatus,
-		Expires:        certificate.OrderExpires,
+		Expires:        certificate.OrderExpires.Value,
 		CSR:            certificate.CSR,
-		Before:         certificate.NotBefore,
-		After:          certificate.NotAfter,
+		Before:         certificate.NotBefore.Value,
+		After:          certificate.NotAfter.Value,
 		Authorisations: []string{},
 		CertificateURI: certificate.URI,
 	}

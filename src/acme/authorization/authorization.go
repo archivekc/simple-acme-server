@@ -59,6 +59,7 @@ func HandleNewAuthorization(server *model.AcmeServer, w http.ResponseWriter, r *
 		authorization.Challenges = []*model.Challenge{c}
 
 		client.Authorizations = append(client.Authorizations, authorization)
+		server.Save()
 
 		response := newAuthzOutput{
 			Status:     authorization.Status,

@@ -2,8 +2,12 @@ package model
 
 import (
 	"ca"
+	"encoding/json"
+	"io/ioutil"
+	"model/constants"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -15,6 +19,11 @@ type JWK struct {
 	CRV string `json:"crv"`
 	X   string `json:"x"`
 	Y   string `json:"y"`
+}
+
+// JSONTime to hold a time and have a marshaller
+type JSONTime struct {
+	Value time.Time
 }
 
 //AcmeServer represents the configuration of this AcmeServer
@@ -40,10 +49,10 @@ type RegisterClient struct {
 // CertificateRequest that holds CSR
 type CertificateRequest struct {
 	CSR          string
-	NotBefore    time.Time
-	NotAfter     time.Time
+	NotBefore    JSONTime
+	NotAfter     JSONTime
 	OrderStatus  string
-	OrderExpires time.Time
+	OrderExpires JSONTime
 	OrderURI     string
 	URI          string
 	Last         *Certificate
@@ -70,5 +79,44 @@ type Challenge struct {
 	Token            string
 	URI              string
 	KeyAuthorization string
-	Validated        time.Time
+	Validated        JSONTime
+}
+
+var saveLock = &sync.Mutex{}
+
+// Save to disc clients
+func (serv *AcmeServer) Save() {
+	saveLock.Lock()
+	sav, err := json.Marshal(serv.Clients)
+	if err != nil {
+		panic(err)
+	}
+	err = ioutil.WriteFile(constants.DatabaseFileName, sav, 0600)
+	if err != nil {
+		panic(err)
+	}
+	saveLock.Unlock()
+}
+
+// Load from disc clients
+func (serv *AcmeServer) Load() {
+	sav, err := ioutil.ReadFile(constants.DatabaseFileName)
+	if err != nil {
+		panic(err)
+	}
+	err = json.Unmarshal(sav, &serv.Clients)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (t JSONTime) MarshalJSON() ([]byte, error) {
+	result := t.Value.Format(constants.TimeFormat)
+	return []byte(result), nil
+}
+
+func (t JSONTime) UnmarshalJSON(v []byte) error {
+	var err error
+	t.Value, err = time.Parse(constants.TimeFormat, string(v))
+	return err
 }
