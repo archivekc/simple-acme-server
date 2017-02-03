@@ -17,233 +17,19 @@ import (
 	"io/ioutil"
 	"log"
 	"model"
+	"model/constants"
 	"net"
 	"net/http"
 	"os"
-	"time"
 
+	"github.com/ProfOak/flag2"
 	"github.com/jasonlvhit/gocron"
 
 	"encoding/base64"
 
 	"crypto/tls"
-
-	jose "gopkg.in/square/go-jose.v2"
 )
 
-type Registration struct {
-	Contact  []string `json:"contact"`
-	Nonce    string
-	Key      JWSJWK `json:"key"`
-	Requests []Request
-}
-
-type Request struct {
-	DNS       string
-	Status    string
-	Validated time.Time
-}
-
-type JWSChallenge struct {
-	Resource         string `json:"resource"`
-	Type             string `json:"type"`
-	TLS              bool   `json:"tls"`
-	KeyAuthorization string `json:"keyAuthorization"`
-}
-
-type JWSJWK struct {
-	KTY string `json:"kty"`
-	CRV string `json:"crv"`
-	X   string `json:"x"`
-	Y   string `json:"y"`
-}
-
-type JWSConfirmedAuthzChallenge struct {
-	Type             string `json:"type"`
-	URI              string `json:"uri"`
-	Token            string `json:"token"`
-	TLS              bool   `json:"tls"`
-	Status           string `json:"status"`
-	Resource         string `json:"resource"`
-	KeyAuthorization string `json:"keyAuthorization"`
-}
-
-/*func createJwt(serverName, source string) string {
-	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: key}, &jose.SignerOptions{})
-	if err != nil {
-		panic(err)
-	}
-
-	cl := jwt.Claims{
-		Subject:   "acme",
-		Issuer:    serverName,
-		NotBefore: jwt.NewNumericDate(time.Now()),
-		Audience:  jwt.Audience{source},
-	}
-	raw, err := jwt.Signed(sig).Claims(cl).CompactSerialize()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(raw)
-	return raw
-}*/
-
-func createJws(privateKey, payload []byte) string {
-	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: privateKey}, &jose.SignerOptions{})
-	if err != nil {
-		panic(err)
-	}
-	object, err := signer.Sign(payload)
-	if err != nil {
-		panic(err)
-	}
-	serialized := object.FullSerialize()
-
-	fmt.Println(serialized)
-	return serialized
-}
-
-/*
-	func validateJwsAuthz(privateKey string, payload []byte) *JWSNewAuthzPayload {
-		var b b64JWS
-		var v JWSNewAuthzPayload
-		err := json.Unmarshal(payload, &b)
-		if err != nil {
-			panic(err)
-		}
-		if m := len(b.Payload) % 4; m != 0 {
-			b.Payload += strings.Repeat("=", 4-m)
-		}
-		pb, err := base64.StdEncoding.DecodeString(b.Payload)
-		if err != nil {
-			panic(err)
-		}
-		err = json.Unmarshal(pb, &v)
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Println(v)
-		_, err = jose.ParseSigned(string(payload))
-		if err != nil {
-			panic(err)
-		}
-		// FIXME Need to check Signature but can't managed to do so
-		output, err := object.Verify([]byte(privateKey))
-		if err != nil {
-			panic(err)
-		}
-	return &v
-	//return output
-
-}
-
-func validateJwsChallenge(privateKey string, payload []byte) *JWSChallenge {
-	fmt.Println("=====================> ", string(payload))
-	var b b64JWS
-	var v JWSChallenge
-	err := json.Unmarshal(payload, &b)
-	if err != nil {
-		panic(err)
-	}
-	if m := len(b.Payload) % 4; m != 0 {
-		b.Payload += strings.Repeat("=", 4-m)
-	}
-	pb, err := base64.StdEncoding.DecodeString(b.Payload)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(string(pb))
-	err = json.Unmarshal(pb, &v)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(v)
-	_, err = jose.ParseSigned(string(payload))
-	if err != nil {
-		panic(err)
-	}
-	// FIXME Need to check Signature but can't managed to do so
-	output, err := object.Verify([]byte(privateKey))
-	if err != nil {
-		panic(err)
-	}
-	return &v
-	//return output
-
-}*/
-
-/*
-func validateSimpleHTTP(privateKey string, payload []byte) *JWSNewAuthzChallenge {
-	fmt.Println("Chalenger content> ", string(payload))
-	var b b64JWS
-	var v JWSNewAuthzChallenge
-	err := json.Unmarshal(payload, &b)
-	if err != nil {
-		panic(err)
-	}
-	if m := len(b.Payload) % 4; m != 0 {
-		b.Payload += strings.Repeat("=", 4-m)
-	}
-	pb, err := base64.StdEncoding.DecodeString(b.Payload)
-	if err != nil {
-		panic(err)
-	}
-	err = json.Unmarshal(pb, &v)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(v)
-	_, err = jose.ParseSigned(string(payload))
-	if err != nil {
-		panic(err)
-	}
-	// FIXME Need to check Signature but can't managed to do so
-	///output, err := object.Verify([]byte(privateKey))
-	return &v
-	//return output
-
-}
-
-
-func handleRequestStatus(w http.ResponseWriter, r *http.Request) {
-	client := nonceMap[getIP(r)]
-	authorization := client.Requests[0]
-	if authorization.Status == "pending" {
-		w.Header().Set("Retry-After", "15")
-		w.WriteHeader(http.StatusAccepted)
-	} else {
-		response := JWSNewAuthzResponse{
-			Status: authorization.Status,
-			Identifier: JWSNewAuthzIdentifier{
-				Type:  "dns",
-				Value: authorization.DNS,
-			},
-			Challenges: []JWSNewAuthzChallenge{
-				JWSNewAuthzChallenge{
-					Status:    authorization.Status,
-					Type:      "simpleHttp",
-					Token:     authorization.Challenge.Token,
-					Validated: authorization.Validated,
-				}},
-		}
-
-		w.WriteHeader(http.StatusOK)
-		debug, _ := json.Marshal(response)
-		fmt.Println(string(debug))
-		json.NewEncoder(w).Encode(response)
-	}
-
-}
-
-
-
-
-
-
-*/
 func defaultHandle(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Url:", html.EscapeString(r.URL.Path))
 	fmt.Println("Header:", r.Header)
@@ -251,7 +37,7 @@ func defaultHandle(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Body:", string(content))
 }
 
-func initServer(domainName string, acmes *model.AcmeServer) {
+func initServer(acmes *model.AcmeServer) {
 	if _, err := os.Stat("server.key"); os.IsNotExist(err) {
 		priv, err := rsa.GenerateKey(rand.Reader, 2048)
 		if err != nil {
@@ -261,12 +47,12 @@ func initServer(domainName string, acmes *model.AcmeServer) {
 		ioutil.WriteFile("server.key", pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: b}), 0700)
 		tpl := x509.CertificateRequest{
 			Subject: pkix.Name{
-				CommonName: domainName,
+				CommonName: acmes.Hostname,
 			},
 			Version:   1,
 			PublicKey: &priv.PublicKey,
 			DNSNames: []string{
-				domainName,
+				acmes.Hostname,
 			},
 			EmailAddresses: []string{},
 			IPAddresses:    []net.IP{},
@@ -321,20 +107,49 @@ func reloadServer(acmes *model.AcmeServer) {
 		panic(err)
 	}
 	acmes.Listener = l
+	fmt.Println("Restart web server with renew certificate on " + acmes.Hostname + ":" + acmes.Port)
 	acmes.HTTPServer.Serve(acmes.Listener)
 }
 
+func setUpParameters() flag2.Options {
+	f := flag2.NewFlag()
+
+	// Server Config
+	f.AddString("", constants.OptionsHostname, "Server hostname (ssl common name)", "localhost")
+	f.AddString("p", constants.OptionsPort, "Server port", "443")
+
+	// Server key file
+	f.AddString("k", constants.OptionsCaKeyPath, "CA key pem path", "ca_key.pem")
+	f.AddString("c", constants.OptionsCaCrtPath, "CA crt pem path", "ca_crt.pem")
+	f.AddBool("r", constants.OptionsRenewCa, "Renew CA", false)
+
+	// Server root CA config
+	f.AddString("s", constants.OptionsCaRsaKeySize, "CA key bits size", "8192")
+	f.AddString("y", constants.OptionsCaYearOfValidity, "Duration of self-signed CA in year", "10")
+	f.AddString("o", constants.OptionsCaCountry, "Country of self signed", "FR")
+	f.AddString("n", constants.OptionsCaCommonName, "Common name of self signed", "Internal CA")
+
+	// a help flag is added during the parse step
+	options, _ := f.Parse(os.Args)
+	fmt.Println("Start with options:", options)
+	// unfortunate side effect of interfaces
+	if options["help"] == true {
+		f.Usage()
+		os.Exit(0)
+	}
+	return options
+}
+
 func main() {
-	serverName := "localhost"
-	port := "81"
+	parameters := setUpParameters()
 
 	server := model.AcmeServer{
-		Hostname: serverName,
-		Port:     port,
+		Hostname: parameters[constants.OptionsHostname].(string),
+		Port:     parameters[constants.OptionsPort].(string),
 		CA:       new(ca.PersistentSimpleCA),
 		Clients:  make(map[string]*model.RegisterClient),
 	}
-	server.CA.LoadCA("ca_key.pem", "ca_crt.pem")
+	server.CA.LoadCA(parameters)
 
 	http.HandleFunc("/directory", func(w http.ResponseWriter, r *http.Request) {
 		directory.HandleDirectory(&server, w, r)
@@ -369,7 +184,7 @@ func main() {
 	http.HandleFunc("/", defaultHandle)
 
 	// start http server
-	go initServer(serverName, &server)
+	go initServer(&server)
 
 	// renew server cert
 	gocron.Every(8).Days().Do(renewServerCrtAndServe, &server)

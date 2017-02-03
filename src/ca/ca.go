@@ -13,6 +13,12 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"model/constants"
+
+	"strconv"
+
+	"github.com/ProfOak/flag2"
 )
 
 // A CA is supposed to handle the certificate, crl, issuance stuff
@@ -36,16 +42,24 @@ var certDuration = time.Duration(10*24) * time.Hour
 
 // LoadCA create a persistent CA. If private key file does not exist, it creates it with a rsa key of 8192 bits.
 // Expect PEM file format
-func (ca *PersistentSimpleCA) LoadCA(privateKeyPath, certKeyPath string) {
-	if _, err := os.Stat(privateKeyPath); os.IsNotExist(err) {
+func (ca *PersistentSimpleCA) LoadCA(parameters flag2.Options) {
+	if _, err := os.Stat(parameters[constants.OptionsCaKeyPath].(string)); os.IsNotExist(err) || parameters[constants.OptionsRenewCa] == true {
+		rsaKeySize, err := strconv.Atoi(parameters[constants.OptionsCaRsaKeySize].(string))
+		if err != nil {
+			panic(err)
+		}
 		// No private key, let's make one
-		ca.Private, err = rsa.GenerateKey(rand.Reader, 8192)
+		ca.Private, err = rsa.GenerateKey(rand.Reader, rsaKeySize)
+		if err != nil {
+			panic(err)
+		}
+		yearValidity, err := strconv.Atoi(parameters[constants.OptionsCaYearOfValidity].(string))
 		if err != nil {
 			panic(err)
 		}
 		tpl := x509.Certificate{
 			NotBefore:             time.Now(),
-			NotAfter:              time.Now().Add(time.Duration(10*24*365) * time.Hour),
+			NotAfter:              time.Now().Add(time.Duration(yearValidity*24*365) * time.Hour),
 			KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
 			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 			BasicConstraintsValid: true,
@@ -53,8 +67,8 @@ func (ca *PersistentSimpleCA) LoadCA(privateKeyPath, certKeyPath string) {
 			SerialNumber:       big.NewInt(1),
 			SignatureAlgorithm: x509.SHA256WithRSA,
 			Subject: pkix.Name{
-				Country:    []string{"FR"},
-				CommonName: "Internal CA",
+				Country:    []string{parameters[constants.OptionsCaCountry].(string)},
+				CommonName: parameters[constants.OptionsCaCommonName].(string),
 			},
 		}
 		ca.Certificate, err = x509.CreateCertificate(rand.Reader, &tpl, &tpl, &(ca.Private.PublicKey), ca.Private)
@@ -62,13 +76,17 @@ func (ca *PersistentSimpleCA) LoadCA(privateKeyPath, certKeyPath string) {
 			panic(err)
 		}
 		b := x509.MarshalPKCS1PrivateKey(ca.Private)
-		ioutil.WriteFile(privateKeyPath, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: b}), 0700)
-		ioutil.WriteFile(certKeyPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Certificate}), 0755)
+		ioutil.WriteFile(parameters[constants.OptionsCaKeyPath].(string), pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: b}), 0700)
+		ioutil.WriteFile(parameters[constants.OptionsCaCrtPath].(string), pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Certificate}), 0755)
 	} else {
-		if _, err := os.Stat(certKeyPath); os.IsNotExist(err) {
+		if _, err := os.Stat(parameters[constants.OptionsCaCrtPath].(string)); os.IsNotExist(err) {
+			yearValidity, err := strconv.Atoi(parameters[constants.OptionsCaYearOfValidity].(string))
+			if err != nil {
+				panic(err)
+			}
 			tpl := x509.Certificate{
 				NotBefore:             time.Now(),
-				NotAfter:              time.Now().Add(time.Duration(10*24*365) * time.Hour),
+				NotAfter:              time.Now().Add(time.Duration(yearValidity*24*365) * time.Hour),
 				KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
 				ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 				BasicConstraintsValid: true,
@@ -76,17 +94,17 @@ func (ca *PersistentSimpleCA) LoadCA(privateKeyPath, certKeyPath string) {
 				SerialNumber:       big.NewInt(1),
 				SignatureAlgorithm: x509.SHA256WithRSA,
 				Subject: pkix.Name{
-					Country:    []string{"FR"},
-					CommonName: "Internal CA",
+					Country:    []string{parameters[constants.OptionsCaCountry].(string)},
+					CommonName: parameters[constants.OptionsCaCommonName].(string),
 				},
 			}
 			ca.Certificate, err = x509.CreateCertificate(rand.Reader, &tpl, &tpl, &(ca.Private.PublicKey), ca.Private)
 			if err != nil {
 				panic(err)
 			}
-			ioutil.WriteFile(certKeyPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Certificate}), 0755)
+			ioutil.WriteFile(parameters[constants.OptionsCaCrtPath].(string), pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Certificate}), 0755)
 		} else {
-			ppemEncoded, err := ioutil.ReadFile(privateKeyPath)
+			ppemEncoded, err := ioutil.ReadFile(parameters[constants.OptionsCaKeyPath].(string))
 			if err != nil {
 				panic(err)
 			}
@@ -95,7 +113,7 @@ func (ca *PersistentSimpleCA) LoadCA(privateKeyPath, certKeyPath string) {
 			if err != nil {
 				panic(err)
 			}
-			pemEncoded, err := ioutil.ReadFile(certKeyPath)
+			pemEncoded, err := ioutil.ReadFile(parameters[constants.OptionsCaCrtPath].(string))
 			if err != nil {
 				panic(err)
 			}
@@ -111,7 +129,7 @@ func (ca *PersistentSimpleCA) LoadCA(privateKeyPath, certKeyPath string) {
 }
 
 // Init constructor of StupidCA
-func (ca *StupidCA) Init() {
+func (ca *StupidCA) init() {
 	var err error
 	ca.Private, err = rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {

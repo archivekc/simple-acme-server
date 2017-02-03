@@ -2,6 +2,19 @@ This is a prototype of a simple ACME protocol server. The aims is to be able to 
 
 # Features
 * Test with lego client to generate an end user certificate
+* Parameters for CA configuration, CA keys (for using an specific instead of generating one), server domain name, listen port, etc ...
+
+#Parameters
+* "hostname": Hostname of server
+* "port": Port of server
+* "ca-key": Path to the pem file containing CA key
+* "ca-crt": Path to the pem file containing CA crt
+* "renew": Force renew of CA key and crt
+* "ca-key-size": CA rsa key size
+* "ca-year": Number of year CA crt is valid
+* "ca-country": Country code of CA subject
+* "ca-common-name": Common name of CA subject
+
 
 # Roadmap
 * Correctly validate JWS message 
@@ -9,7 +22,6 @@ This is a prototype of a simple ACME protocol server. The aims is to be able to 
 * Add a landing html page with help and link to CA certificate (help user to add CA as trust in their browser)
 * Persistence of clients and generated certificate
 * Support of renewing certificate
-* Parameters for CA configuration, CA keys (for using an specific instead of generating one), server domain name, listen port, etc ...
 * Unit testing
 * Support of others challenges
 
