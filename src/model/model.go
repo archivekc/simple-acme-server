@@ -20,6 +20,8 @@ type JWK struct {
 	CRV string `json:"crv"`
 	X   string `json:"x"`
 	Y   string `json:"y"`
+	N   string `json:"n"`
+	E   string `json:"e"`
 }
 
 // JSONTime to hold a time and have a marshaller
@@ -41,7 +43,7 @@ type AcmeServer struct {
 type RegisterClient struct {
 	Nonce               string
 	Contact             []string
-	Key                 string
+	Key                 JWK
 	Authorizations      []*Authorization
 	CertificateRequests map[string]*CertificateRequest
 	URI                 string
