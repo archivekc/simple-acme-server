@@ -7,6 +7,7 @@ import (
 	"model/constants"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 )
@@ -40,7 +41,7 @@ type AcmeServer struct {
 type RegisterClient struct {
 	Nonce               string
 	Contact             []string
-	Key                 JWK
+	Key                 string
 	Authorizations      []*Authorization
 	CertificateRequests map[string]*CertificateRequest
 	URI                 string
@@ -100,13 +101,15 @@ func (serv *AcmeServer) Save() {
 
 // Load from disc clients
 func (serv *AcmeServer) Load() {
-	sav, err := ioutil.ReadFile(constants.DatabaseFileName)
-	if err != nil {
-		panic(err)
-	}
-	err = json.Unmarshal(sav, &serv.Clients)
-	if err != nil {
-		panic(err)
+	if _, err := os.Stat(constants.DatabaseFileName); !os.IsNotExist(err) {
+		sav, err := ioutil.ReadFile(constants.DatabaseFileName)
+		if err != nil {
+			panic(err)
+		}
+		err = json.Unmarshal(sav, &serv.Clients)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
