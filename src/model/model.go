@@ -83,6 +83,7 @@ type Challenge struct {
 	URI              string
 	KeyAuthorization string
 	Validated        JSONTime
+	AttemptLeft      int
 }
 
 var saveLock = &sync.Mutex{}

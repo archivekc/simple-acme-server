@@ -51,7 +51,7 @@ func HandleInfo(server *model.AcmeServer, w http.ResponseWriter, r *http.Request
 	authorization, challenge := getAuthAndChallengeFromToken(client.Authorizations, token)
 	if r.Method == "GET" {
 		response := infoOutput{
-			Type:             "http-01",
+			Type:             challenge.Type,
 			Token:            challenge.Token,
 			Status:           challenge.Status,
 			URI:              challenge.URI,
@@ -69,12 +69,12 @@ func HandleInfo(server *model.AcmeServer, w http.ResponseWriter, r *http.Request
 		if err != nil {
 			panic(err)
 		}
-		if input.Type != "http-01" {
+		if input.Type != "http-01" && input.Type != "tls-sni-01" {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			challenge.KeyAuthorization = input.KeyAuthorization
 			response := infoOutput{
-				Type:             "http-01",
+				Type:             challenge.Type,
 				Token:            challenge.Token,
 				Status:           challenge.Status,
 				URI:              challenge.URI,
@@ -84,12 +84,18 @@ func HandleInfo(server *model.AcmeServer, w http.ResponseWriter, r *http.Request
 			acme.DefaultHeaderWithNonce(client, w)
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(response)
-			go validHTTP01(authorization, challenge, server)
+			if input.Type == "http-01" {
+				go validHTTP01(authorization, challenge, server)
+			} else {
+				// TODO TLS sni
+				challenge.Status = "valid"
+			}
 		}
 	}
 }
 
 func validHTTP01(auth *model.Authorization, challenge *model.Challenge, server *model.AcmeServer) {
+	challenge.AttemptLeft = challenge.AttemptLeft - 1
 	fmt.Println("valid http-01", auth.CommonName)
 	url := "http://"
 	url += auth.CommonName
