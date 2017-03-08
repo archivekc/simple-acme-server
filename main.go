@@ -120,8 +120,8 @@ func setUpParameters() flag2.Options {
 	f.AddString("p", constants.OptionsPort, "Server port", "443")
 
 	// Server key file
-	f.AddString("k", constants.OptionsCaKeyPath, "CA key pem path", "ca_key.pem")
-	f.AddString("c", constants.OptionsCaCrtPath, "CA crt pem path", "ca_crt.pem")
+	f.AddString("k", constants.OptionsCaKeyPath, "CA key pem path", "keys/ca_key.pem")
+	f.AddString("c", constants.OptionsCaCrtPath, "CA crt pem path", "keys/ca_crt.pem")
 	f.AddBool("r", constants.OptionsRenewCa, "Renew CA", false)
 
 	// Server root CA config

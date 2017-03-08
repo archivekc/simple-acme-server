@@ -30,3 +30,5 @@ This is a prototype of a simple ACME protocol server. The aims is to be able to 
 Currently it is tested against lego client. 
 
 >./lego -d <commonname> -s https://localhost:81/directory -m 'user@example.org' -a=true --path . run
+
+It is also working with traefik.

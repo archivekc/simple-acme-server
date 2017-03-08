@@ -7,3 +7,4 @@ test-server.sh
 ca_crt.pem
 ca_key.pem
 clients.json
+simple-acme-server
