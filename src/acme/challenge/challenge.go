@@ -106,6 +106,7 @@ func validHTTP01(auth *model.Authorization, challenge *model.Challenge, server *
 		fmt.Println("challenge http-01 failed, url not accessible", err.Error())
 		challenge.Status = "invalid"
 		auth.Status = "invalid"
+		return
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
