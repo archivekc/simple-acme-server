@@ -53,7 +53,7 @@ func HandleNewAuthorization(server *model.AcmeServer, w http.ResponseWriter, r *
 		httpChallenge.Type = "http-01"
 		httpChallenge.URI = "https://" + server.Hostname + ":" + server.Port + "/authz/asdf/" + token
 		httpChallenge.Token = token
-		httpChallenge.AttemptLeft = 1
+		httpChallenge.AttemptLeft = 5
 
 		tlssniToken := acme.CreateNonce(32)
 		tlssniChallenge := new(model.Challenge)

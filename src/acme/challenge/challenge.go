@@ -104,8 +104,13 @@ func validHTTP01(auth *model.Authorization, challenge *model.Challenge, server *
 	resp, err := http.Get(url)
 	if err != nil {
 		fmt.Println("challenge http-01 failed, url not accessible", err.Error())
-		challenge.Status = "invalid"
-		auth.Status = "invalid"
+		if challenge.AttemptLeft <= 0 {
+			challenge.Status = "invalid"
+			auth.Status = "invalid"
+		} else {
+			time.Sleep(100 * time.Millisecond)
+			go validHTTP01(auth, challenge, server)
+		}
 		return
 	}
 	defer resp.Body.Close()
