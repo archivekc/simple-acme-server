@@ -184,6 +184,7 @@ func (ca *CA) CreateCert(csr string) []byte {
 		panic(err)
 	}
 	serial, _ := rand.Int(rand.Reader, big.NewInt(99999999))
+	dNSNamesWithSubject := append(certReq.DNSNames, certReq.Subject.CommonName)
 	ccertReq := x509.Certificate{
 		SerialNumber:          serial,
 		Subject:               certReq.Subject,
@@ -193,7 +194,7 @@ func (ca *CA) CreateCert(csr string) []byte {
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
 		IsCA:     false,
-		DNSNames: certReq.DNSNames,
+		DNSNames: dNSNamesWithSubject,
 	}
 	// cert is in der format
 	cert, err := x509.CreateCertificate(rand.Reader, &ccertReq, ca.ParsedCertificate, certReq.PublicKey, ca.Private)
